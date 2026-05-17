@@ -15,7 +15,7 @@ import { AddedToBagSheet } from '@/components/AddedToBagSheet';
 export default function ProductDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { addItem } = useCart();
+  const { addItem, items: cartItems } = useCart();
   const { width } = useWindowDimensions();
   const { getById, getRelated } = useProducts();
   const product = getById(id);
@@ -41,9 +41,13 @@ export default function ProductDetailScreen() {
     );
   }
 
+  const isInCart = !!selectedSize && !!selectedColor &&
+    cartItems.some((i) => i.product.id === product.id && i.selectedSize === selectedSize && i.selectedColor === selectedColor);
+
   const handleAddToCart = () => {
     if (!selectedSize) { showToast('Please choose a size before adding to bag.'); return; }
     if (!selectedColor) { showToast('Please choose a colour before adding to bag.'); return; }
+    if (isInCart) return;
     addItem({ product, quantity: 1, selectedSize, selectedColor });
     setSheetVisible(true);
   };
@@ -142,9 +146,13 @@ export default function ProductDetailScreen() {
             <Text style={styles.soldOutBarText}>SOLD OUT</Text>
           </View>
         ) : (
-          <Pressable style={styles.addBtn} onPress={handleAddToCart}>
-            <Ionicons name="bag-outline" size={18} color={Colors.cream} />
-            <Text style={styles.addBtnText}>ADD TO BAG</Text>
+          <Pressable
+            style={[styles.addBtn, isInCart && styles.addBtnInCart]}
+            onPress={handleAddToCart}
+            disabled={isInCart}
+          >
+            <Ionicons name={isInCart ? 'bag-check-outline' : 'bag-outline'} size={18} color={Colors.cream} />
+            <Text style={styles.addBtnText}>{isInCart ? 'IN BAG' : 'ADD TO BAG'}</Text>
           </Pressable>
         )}
       </View>
@@ -203,6 +211,7 @@ function makeStyles(C: ReturnType<typeof useColors>, width: number) {
     relatedRow: { paddingHorizontal: Spacing.md, gap: 10, paddingBottom: 4 },
     stickyBar: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: Spacing.md, backgroundColor: C.cream, borderTopWidth: 1, borderColor: C.border },
     addBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: C.black, paddingVertical: 16 },
+    addBtnInCart: { backgroundColor: C.muted },
     addBtnText: { color: C.cream, fontSize: 13, letterSpacing: 2, fontWeight: '600' },
     soldOutBar: { alignItems: 'center', justifyContent: 'center', backgroundColor: C.border, paddingVertical: 16 },
     soldOutBarText: { fontSize: 13, letterSpacing: 2, fontWeight: '700', color: C.muted },
