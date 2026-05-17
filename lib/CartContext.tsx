@@ -56,19 +56,36 @@ function toApiItems(items: CartItem[]): CartApiItem[] {
   }));
 }
 
-function fromApiItems(items: CartApiItem[]): CartItem[] {
-  return items.map((i) => ({
-    product: {
-      id: i.productId, name: i.name, price: i.price,
-      image: i.image, images: [i.image],
-      gender: '', category: '', description: '',
-      sizes: [], colors: [], rating: 0, reviewCount: 0,
-      isNew: false, isSale: false, isFeatured: false, inStock: true,
-    } as unknown as Product,
-    quantity: i.quantity,
-    selectedSize: i.selectedSize,
-    selectedColor: i.selectedColor,
-  }));
+function fromApiItems(items: any[]): CartItem[] {
+  return items
+    .map((i) => {
+      // Handle both mobile flat format (productId/name/price) and web nested format (product.{id,name,price})
+      const p = i.product;
+      return {
+        product: {
+          id: p?.id ?? i.productId ?? '',
+          name: p?.name ?? i.name ?? '',
+          price: p?.price ?? i.price ?? 0,
+          image: p?.image ?? p?.images?.[0] ?? i.image ?? '',
+          images: p?.images ?? [p?.image ?? i.image ?? ''],
+          gender: p?.gender ?? '',
+          category: p?.category ?? '',
+          description: p?.description ?? '',
+          sizes: p?.sizes ?? [],
+          colors: p?.colors ?? [],
+          rating: p?.rating ?? 0,
+          reviewCount: p?.reviewCount ?? 0,
+          isNew: p?.isNew ?? false,
+          isSale: p?.isSale ?? false,
+          isFeatured: p?.isFeatured ?? false,
+          inStock: p?.inStock ?? true,
+        } as unknown as Product,
+        quantity: i.quantity ?? 1,
+        selectedSize: i.selectedSize ?? '',
+        selectedColor: i.selectedColor ?? '',
+      };
+    })
+    .filter((i) => i.product.id && typeof i.product.price === 'number');
 }
 
 interface CartContextValue {
