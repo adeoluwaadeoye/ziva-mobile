@@ -24,10 +24,10 @@
 
 
 <div align="center">
-  <img src="./screenshots/home.png" width="23%" />
-  <img src="./screenshots/products.png" width="23%" />
-  <img src="./screenshots/product-detail.png" width="23%" />
-  <img src="./screenshots/orders.png" width="23%" />
+  <img src="./screenshots/home.jpg" width="23%" />
+  <img src="./screenshots/products.jpg" width="23%" />
+  <img src="./screenshots/product-detail.jpg" width="23%" />
+  <img src="./screenshots/orders.jpg" width="23%" />
 </div>
 
 
