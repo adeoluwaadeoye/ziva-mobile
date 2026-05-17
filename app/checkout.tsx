@@ -67,6 +67,40 @@ export default function CheckoutScreen() {
 
   const grandTotal = totalPrice + DELIVERY_FEE;
 
+  const resetForm = () => {
+    setManualName(user?.name ?? '');
+    setManualPhone('');
+    setManualStreet('');
+    setManualCity('');
+    setManualState('');
+    setSelectedAddressId(addresses.find((a) => a.isDefault)?.id ?? addresses[0]?.id ?? null);
+    setMode(addresses.length > 0 ? 'saved' : 'manual');
+  };
+
+  const handlePaymentCallback = useCallback(async (url: string) => {
+    if (paymentHandled.current || !pendingPayment) return;
+    paymentHandled.current = true;
+
+    const { ref, customer, delivery } = pendingPayment;
+    const paidRef = parseQueryParam(url, 'reference') ?? parseQueryParam(url, 'trxref') ?? ref;
+
+    setPendingPayment(null);
+    setPlacing(true);
+    try {
+      await placeOrder(items, customer, delivery, DELIVERY_FEE, paidRef);
+      clearCart();
+      resetForm();
+      router.replace('/orders');
+      setTimeout(() => {
+        Alert.alert('Order Placed!', "Payment confirmed. We'll start processing your order right away.");
+      }, 300);
+    } catch (err: any) {
+      Alert.alert('Payment Failed', err.message ?? 'Could not complete payment. Please contact support.');
+    } finally {
+      setPlacing(false);
+    }
+  }, [pendingPayment, items, placeOrder, clearCart, router]);
+
   if (!user) {
     return (
       <SafeAreaView style={styles.safe} edges={['bottom']}>
@@ -81,16 +115,6 @@ export default function CheckoutScreen() {
       </SafeAreaView>
     );
   }
-
-  const resetForm = () => {
-    setManualName(user?.name ?? '');
-    setManualPhone('');
-    setManualStreet('');
-    setManualCity('');
-    setManualState('');
-    setSelectedAddressId(addresses.find((a) => a.isDefault)?.id ?? addresses[0]?.id ?? null);
-    setMode(addresses.length > 0 ? 'saved' : 'manual');
-  };
 
   const handlePlaceOrder = async () => {
     let customer: { name: string; email: string; phone?: string };
@@ -127,30 +151,6 @@ export default function CheckoutScreen() {
       setInitializing(false);
     }
   };
-
-  const handlePaymentCallback = useCallback(async (url: string) => {
-    if (paymentHandled.current || !pendingPayment) return;
-    paymentHandled.current = true;
-
-    const { ref, customer, delivery } = pendingPayment;
-    const paidRef = parseQueryParam(url, 'reference') ?? parseQueryParam(url, 'trxref') ?? ref;
-
-    setPendingPayment(null);
-    setPlacing(true);
-    try {
-      await placeOrder(items, customer, delivery, DELIVERY_FEE, paidRef);
-      clearCart();
-      resetForm();
-      router.replace('/orders');
-      setTimeout(() => {
-        Alert.alert('Order Placed!', "Payment confirmed. We'll start processing your order right away.");
-      }, 300);
-    } catch (err: any) {
-      Alert.alert('Payment Failed', err.message ?? 'Could not complete payment. Please contact support.');
-    } finally {
-      setPlacing(false);
-    }
-  }, [pendingPayment, items, placeOrder, clearCart, router]);
 
   const handleClosePayment = () => {
     setPendingPayment(null);
