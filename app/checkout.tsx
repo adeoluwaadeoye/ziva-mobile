@@ -108,8 +108,8 @@ export default function CheckoutScreen() {
           <Ionicons name="lock-closed-outline" size={44} color={Colors.border} />
           <Text style={styles.guestTitle}>Sign in to checkout</Text>
           <Text style={styles.guestSub}>You need an account to place an order.</Text>
-          <Pressable style={styles.signInBtn} onPress={() => router.push('/(tabs)/account')}>
-            <Text style={styles.signInBtnText}>GO TO ACCOUNT</Text>
+          <Pressable style={styles.signInBtn} onPress={() => router.push('/auth/sign-in?redirect=/checkout')}>
+            <Text style={styles.signInBtnText}>SIGN IN</Text>
           </Pressable>
         </View>
       </SafeAreaView>

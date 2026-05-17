@@ -5,12 +5,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/lib/AuthContext';
 import { useColors, Spacing } from '@/lib/theme';
 
 export default function SignInScreen() {
   const router = useRouter();
+  const { redirect } = useLocalSearchParams<{ redirect?: string }>();
   const { signIn, signInWithGoogle } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -20,6 +21,8 @@ export default function SignInScreen() {
   const Colors = useColors();
   const styles = useMemo(() => makeStyles(Colors), [Colors]);
 
+  const afterLogin = redirect ?? '/(tabs)/account';
+
   const handleSignIn = async () => {
     if (!email.trim() || !password) {
       Alert.alert('Missing fields', 'Please enter your email and password.');
@@ -28,7 +31,7 @@ export default function SignInScreen() {
     setLoading(true);
     try {
       await signIn(email.trim(), password);
-      router.replace('/(tabs)/account');
+      router.replace(afterLogin as any);
     } catch (e: any) {
       Alert.alert('Sign In Failed', e.message);
     } finally {
@@ -40,7 +43,7 @@ export default function SignInScreen() {
     setGoogleLoading(true);
     try {
       await signInWithGoogle();
-      router.replace('/(tabs)/account');
+      router.replace(afterLogin as any);
     } catch (e: any) {
       Alert.alert('Google Sign In Failed', e.message ?? 'Could not sign in with Google. Please try again.');
     } finally {
