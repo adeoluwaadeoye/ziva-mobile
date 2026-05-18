@@ -90,7 +90,7 @@ export default function HomeScreen() {
   const heroIndexRef = useRef(0);
   const progressAnim = useRef(new Animated.Value(0)).current;
   const Colors = useColors();
-  const styles = useMemo(() => makeStyles(Colors, width), [Colors, width]);
+  const styles = useMemo(() => makeStyles(Colors), [Colors]);
 
   const goTo = useCallback((idx: number) => {
     heroIndexRef.current = idx;
@@ -150,9 +150,7 @@ export default function HomeScreen() {
                   contentPosition={{ left: '72%', top: 0 }}
                 />
                 {/* Dark overlay */}
-                <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
-                  <View style={styles.heroOverlayFull} />
-                </View>
+                <View style={[StyleSheet.absoluteFillObject, styles.heroOverlayFull]} pointerEvents="none" />
 
                 {/* Slide counter + progress bar — top center */}
                 <View style={styles.heroIndicator}>
@@ -361,12 +359,12 @@ export default function HomeScreen() {
   );
 }
 
-function makeStyles(C: ReturnType<typeof useColors>, width: number) {
+function makeStyles(C: ReturnType<typeof useColors>) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: C.cream },
 
     // Hero overlays
-    heroOverlayFull: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(28,28,28,0.52)' },
+    heroOverlayFull: { backgroundColor: 'rgba(28,28,28,0.52)' },
 
     // Slide counter + progress bar
     heroIndicator: {
@@ -380,8 +378,8 @@ function makeStyles(C: ReturnType<typeof useColors>, width: number) {
 
     // Main slide content
     heroContent: {
-      position: 'absolute', left: 0, right: 0, top: 0, bottom: 60,
-      justifyContent: 'center', paddingHorizontal: Spacing.lg, gap: 0,
+      position: 'absolute', left: 0, right: 0, bottom: 100,
+      paddingHorizontal: Spacing.lg, paddingBottom: 28, gap: 0,
     },
     heroEyebrow: { fontSize: 9, letterSpacing: 5, fontWeight: '700', textTransform: 'uppercase', marginBottom: 12 },
     heroHeading: { color: '#FFFFFF', fontSize: 42, fontWeight: '700', lineHeight: 46, letterSpacing: -0.5 },
