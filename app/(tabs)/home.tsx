@@ -1,5 +1,5 @@
-import { useMemo, useRef, useEffect, useState } from 'react';
-import { ScrollView, View, Text, StyleSheet, Pressable, FlatList, ImageBackground, useWindowDimensions } from 'react-native';
+import { useMemo, useRef, useEffect, useState, useCallback } from 'react';
+import { ScrollView, View, Text, StyleSheet, Pressable, FlatList, ImageBackground, useWindowDimensions, Animated } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -8,11 +8,49 @@ import ProductCard from '@/components/ProductCard';
 import { useProducts } from '@/lib/ProductsContext';
 import AppHeader from '@/components/AppHeader';
 
+const INTERVAL = 6000;
+
 const HERO_SLIDES = [
-  { image: require('../../assets/hero-bg1.jpg'), label: 'NEW COLLECTION', title: 'Designed in Lagos.\nWorn Worldwide.' },
-  { image: require('../../assets/hero-bg2.jpg'), label: "WOMEN'S EDIT", title: 'Bold Prints.\nTimeless Silhouettes.' },
-  { image: require('../../assets/hero-bg3.jpg'), label: "MEN'S COLLECTION", title: 'Power Dressing.\nAfrican Roots.' },
-  { image: require('../../assets/hero-bg4.jpg'), label: 'BESPOKE TAILORING', title: 'Made for You.\nPerfect Every Time.' },
+  {
+    image: require('../../assets/hero-bg1.jpg'),
+    eyebrow: 'Nigerian Fashion House',
+    heading: 'ZIVA',
+    italic: '',
+    sub: 'Premium Ankara, Aso-Oke, Agbada & beyond — crafted for the modern Nigerian.',
+    cta: 'Shop Now',
+    ctaFilter: null as string | null,
+    accent: '#C9A84C',
+  },
+  {
+    image: require('../../assets/hero-bg2.jpg'),
+    eyebrow: "Women's Collection",
+    heading: 'Draped in',
+    italic: 'Heritage.',
+    sub: 'From Ankara prints to hand-woven Aso-Oke — every piece tells a story of craft, colour and culture.',
+    cta: 'Shop Women',
+    ctaFilter: 'women' as string | null,
+    accent: '#E8A0A0',
+  },
+  {
+    image: require('../../assets/hero-bg3.jpg'),
+    eyebrow: "Men's Collection",
+    heading: 'Dressed to',
+    italic: 'Command.',
+    sub: 'Agbada, Senator, Dashiki — power dressing rooted in Nigerian tradition and master craftsmanship.',
+    cta: 'Shop Men',
+    ctaFilter: 'men' as string | null,
+    accent: '#8BAACC',
+  },
+  {
+    image: require('../../assets/hero-bg4.jpg'),
+    eyebrow: 'New Arrivals',
+    heading: 'Worn',
+    italic: 'Worldwide.',
+    sub: 'Designed in Lagos. Worn from Abuja to Amsterdam — Nigerian fashion taking its place on the global stage.',
+    cta: 'New Arrivals',
+    ctaFilter: 'new' as string | null,
+    accent: '#A8C8A0',
+  },
 ];
 
 const CATEGORIES = [
@@ -42,50 +80,132 @@ const TRUST_STATS = [
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
+  const heroHeight = Math.max(Math.round(height * 0.85), 480);
   const cardWidth = (width - Spacing.md * 2 - Spacing.sm) / 2;
   const { products: allProducts } = useProducts();
   const featured = useMemo(() => allProducts.filter((p) => p.isFeatured).slice(0, 6), [allProducts]);
   const heroRef = useRef<FlatList>(null);
   const [heroIndex, setHeroIndex] = useState(0);
+  const heroIndexRef = useRef(0);
+  const progressAnim = useRef(new Animated.Value(0)).current;
   const Colors = useColors();
   const styles = useMemo(() => makeStyles(Colors, width), [Colors, width]);
 
+  const goTo = useCallback((idx: number) => {
+    heroIndexRef.current = idx;
+    setHeroIndex(idx);
+    heroRef.current?.scrollToOffset({ offset: idx * width, animated: true });
+  }, [width]);
+
+  const goPrev = useCallback(() => {
+    goTo((heroIndexRef.current - 1 + HERO_SLIDES.length) % HERO_SLIDES.length);
+  }, [goTo]);
+
+  const goNext = useCallback(() => {
+    goTo((heroIndexRef.current + 1) % HERO_SLIDES.length);
+  }, [goTo]);
+
+  // Auto-advance
   useEffect(() => {
     const timer = setInterval(() => {
-      setHeroIndex((prev) => {
-        const next = (prev + 1) % HERO_SLIDES.length;
-        heroRef.current?.scrollToOffset({ offset: next * width, animated: true });
-        return next;
-      });
-    }, 10500);
+      goTo((heroIndexRef.current + 1) % HERO_SLIDES.length);
+    }, INTERVAL);
     return () => clearInterval(timer);
-  }, [width]);
+  }, [goTo]);
+
+  // Progress bar per slide
+  useEffect(() => {
+    progressAnim.setValue(0);
+    const anim = Animated.timing(progressAnim, {
+      toValue: 1,
+      duration: INTERVAL,
+      useNativeDriver: false,
+    });
+    anim.start();
+    return () => anim.stop();
+  }, [heroIndex, progressAnim]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <AppHeader />
       <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={{ height: 460 }}>
+        <View style={{ height: heroHeight }}>
           <FlatList
             ref={heroRef} data={HERO_SLIDES} horizontal pagingEnabled scrollEnabled
             showsHorizontalScrollIndicator={false} keyExtractor={(_, i) => String(i)}
             getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
-            onMomentumScrollEnd={(e) => setHeroIndex(Math.round(e.nativeEvent.contentOffset.x / width))}
+            onMomentumScrollEnd={(e) => {
+              const idx = Math.round(e.nativeEvent.contentOffset.x / width);
+              heroIndexRef.current = idx;
+              setHeroIndex(idx);
+            }}
             renderItem={({ item }) => (
-              <ImageBackground source={item.image} style={[styles.hero, { width }]} imageStyle={{ resizeMode: 'cover' }}>
-                <View style={styles.heroOverlay}>
-                  <Text style={styles.heroLabel}>{item.label}</Text>
-                  <Text style={styles.heroTitle}>{item.title}</Text>
-                  <Pressable style={styles.heroCta} onPress={() => router.push('/shop')}>
-                    <Text style={styles.heroCtaText}>SHOP NOW</Text>
-                  </Pressable>
+              <View style={{ width, height: heroHeight, overflow: 'hidden' }}>
+                {/* Image — focal point at 72% from left to keep subject visible, matching web mobile */}
+                <Image
+                  source={item.image}
+                  style={StyleSheet.absoluteFillObject}
+                  contentFit="cover"
+                  contentPosition={{ left: '72%', top: 0 }}
+                />
+                {/* Dark overlay */}
+                <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+                  <View style={styles.heroOverlayFull} />
                 </View>
-              </ImageBackground>
+
+                {/* Slide counter + progress bar — top center */}
+                <View style={styles.heroIndicator}>
+                  <Text style={styles.heroIndicatorNum}>{String(heroIndex + 1).padStart(2, '0')}</Text>
+                  <View style={styles.heroProgressTrack}>
+                    <Animated.View
+                      style={[styles.heroProgressBar, {
+                        width: progressAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }),
+                      }]}
+                    />
+                  </View>
+                  <Text style={styles.heroIndicatorTotal}>{String(HERO_SLIDES.length).padStart(2, '0')}</Text>
+                </View>
+
+                {/* Main content — vertically centered, left aligned */}
+                <View style={styles.heroContent}>
+                  <Text style={[styles.heroEyebrow, { color: item.accent }]}>{item.eyebrow}</Text>
+                  <Text style={styles.heroHeading}>{item.heading}</Text>
+                  {!!item.italic && (
+                    <Text style={[styles.heroHeadingItalic, { color: item.accent }]}>{item.italic}</Text>
+                  )}
+                  <Text style={styles.heroSub}>{item.sub}</Text>
+                  <View style={styles.heroCtaRow}>
+                    <Pressable
+                      style={[styles.heroCta, { backgroundColor: item.accent }]}
+                      onPress={() => router.push({ pathname: '/shop', params: item.ctaFilter ? { filter: item.ctaFilter } : {} })}
+                    >
+                      <Text style={styles.heroCtaText}>{item.cta}</Text>
+                    </Pressable>
+                    <Pressable style={styles.heroCtaGhost} onPress={() => router.push('/shop')}>
+                      <Text style={styles.heroCtaGhostText}>All Products</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              </View>
             )}
           />
-          <View style={styles.dotRow}>
-            {HERO_SLIDES.map((_, i) => <View key={i} style={[styles.dot, heroIndex === i && styles.dotActive]} />)}
+
+          {/* Navigation — ← dots → */}
+          <View style={styles.heroNav}>
+            <Pressable onPress={goPrev} style={styles.heroNavArrow} hitSlop={12}>
+              <Text style={styles.heroNavArrowText}>←</Text>
+            </Pressable>
+            <View style={styles.dotRow}>
+              {HERO_SLIDES.map((_, i) => (
+                <Pressable key={i} onPress={() => goTo(i)} hitSlop={8}>
+                  <View style={[styles.dot, heroIndex === i && styles.dotActive]} />
+                </Pressable>
+              ))}
+            </View>
+            <Pressable onPress={goNext} style={styles.heroNavArrow} hitSlop={12}>
+              <Text style={styles.heroNavArrowText}>→</Text>
+            </Pressable>
           </View>
         </View>
 
@@ -244,14 +364,47 @@ export default function HomeScreen() {
 function makeStyles(C: ReturnType<typeof useColors>, width: number) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: C.cream },
-    hero: { height: 460, justifyContent: 'flex-end' },
-    heroOverlay: { padding: Spacing.lg, paddingBottom: 44, backgroundColor: 'rgba(28,28,28,0.55)', gap: 10 },
-    heroLabel: { color: 'rgba(255,255,255,0.75)', fontSize: 10, letterSpacing: 3, fontWeight: '600' },
-    heroTitle: { color: '#FFFFFF', fontSize: 26, fontWeight: '300', lineHeight: 34 },
-    heroCta: { alignSelf: 'flex-start', borderWidth: 1, borderColor: '#FFFFFF', paddingHorizontal: 20, paddingVertical: 10, marginTop: 4 },
-    heroCtaText: { color: '#FFFFFF', fontSize: 11, letterSpacing: 2, fontWeight: '600' },
-    dotRow: { position: 'absolute', bottom: 16, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 6 },
-    dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.4)' },
+
+    // Hero overlays
+    heroOverlayFull: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(28,28,28,0.52)' },
+
+    // Slide counter + progress bar
+    heroIndicator: {
+      position: 'absolute', top: 24, left: 0, right: 0,
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+    },
+    heroIndicatorNum: { color: 'rgba(255,255,255,0.70)', fontSize: 12, fontWeight: '600' },
+    heroProgressTrack: { width: 72, height: 1, backgroundColor: 'rgba(255,255,255,0.18)', overflow: 'hidden' },
+    heroProgressBar: { height: '100%', backgroundColor: 'rgba(255,255,255,0.60)' },
+    heroIndicatorTotal: { color: 'rgba(255,255,255,0.25)', fontSize: 10 },
+
+    // Main slide content
+    heroContent: {
+      position: 'absolute', left: 0, right: 0, top: 0, bottom: 60,
+      justifyContent: 'center', paddingHorizontal: Spacing.lg, gap: 0,
+    },
+    heroEyebrow: { fontSize: 9, letterSpacing: 5, fontWeight: '700', textTransform: 'uppercase', marginBottom: 12 },
+    heroHeading: { color: '#FFFFFF', fontSize: 42, fontWeight: '700', lineHeight: 46, letterSpacing: -0.5 },
+    heroHeadingItalic: { fontSize: 42, fontWeight: '700', lineHeight: 46, letterSpacing: -0.5, marginBottom: 14 },
+    heroSub: { color: 'rgba(255,255,255,0.55)', fontSize: 13, lineHeight: 20, marginTop: 10, marginBottom: 22, maxWidth: 300 },
+    heroCtaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+    heroCta: { paddingHorizontal: 20, paddingVertical: 11, alignItems: 'center', justifyContent: 'center' },
+    heroCtaText: { color: '#1C1C1C', fontSize: 11, fontWeight: '700', letterSpacing: 1.8 },
+    heroCtaGhost: {
+      paddingHorizontal: 20, paddingVertical: 11,
+      backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center',
+    },
+    heroCtaGhostText: { color: '#FFFFFF', fontSize: 11, fontWeight: '600', letterSpacing: 1.8 },
+
+    // Navigation bar
+    heroNav: {
+      position: 'absolute', bottom: 0, left: 0, right: 0, height: 60,
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 20,
+    },
+    heroNavArrow: { padding: 4 },
+    heroNavArrowText: { color: 'rgba(255,255,255,0.45)', fontSize: 18, fontWeight: '300' },
+    dotRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.35)' },
     dotActive: { width: 20, height: 6, borderRadius: 3, backgroundColor: '#FFFFFF' },
     pressSection: { backgroundColor: C.white, paddingVertical: 28, alignItems: 'center', gap: 16 },
     pressEyebrow: { fontSize: 9, letterSpacing: 4, color: C.muted, fontWeight: '700', textTransform: 'uppercase' },
